@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin: 8px 0; display: flex; align-items: center; }
+        li button { margin-left: 10px; }
+        input, button { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Task Manager</h1>
+    <div>
+        <h2>Tasks</h2>
+        <ul id="tasks"></ul>
+    </div>
+    <div>
+        <h2>Add a Task</h2>
+        <input type="text" id="newTaskTitle" placeholder="Enter task title">
+        <button onclick="addTask()">Add Task</button>
+    </div>
+
+    <script>
+        const tasksElement = document.getElementById('tasks');
+        const newTaskTitleInput = document.getElementById('newTaskTitle');
+
+        const apiUrl = 'http://192.168.4.33:5000/graphql';
+        // const apiUrl = 'http://127.0.0.1:5000/graphql';
+
+        function fetchTasks() {
+            const query = `query { allTasks { id title completed } }`;
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.errors) {
+                    console.error('GraphQL Errors:', data.errors);
+                    return;
+                }
+                tasksElement.innerHTML = '';
+                data.data.allTasks.forEach(task => {
+                    const taskElement = document.createElement('li');
+                    taskElement.textContent = `${task.title} - ${task.completed ? 'Completed' : 'Pending'}`;
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.onclick = () => deleteTask(task.id);
+                    taskElement.appendChild(deleteButton);
+                    tasksElement.appendChild(taskElement);
+                });
+            })
+            .catch(error => console.error('Error fetching tasks:', error));
+        }
+
+        function addTask() {
+            const title = newTaskTitleInput.value;
+            const mutation = `mutation { createTask(title: "${title}") { task { id title completed } } }`;
+            fetch('http://127.0.0.1:5000/graphql', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: mutation })
+            })
+            .then(response => response.json())
+            .then(data => {
+                newTaskTitleInput.value = '';
+                fetchTasks();
+            })
+            .catch(error => console.error('Error adding task:', error));
+        }
+
+        function deleteTask(id) {
+            const mutation = `mutation { deleteTask(id: ${id}) { success } }`;
+            fetch('http://127.0.0.1:5000/graphql', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: mutation })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.data.deleteTask.success) {
+                    fetchTasks(); // Refresh the list after deletion
+                } else {
+                    console.error('Failed to delete the task');
+                }
+            })
+            .catch(error => console.error('Error deleting task:', error));
+        }
+
+        fetchTasks();
+    </script>
+</body>
+</html>
