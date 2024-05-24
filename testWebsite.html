@@ -76,7 +76,7 @@
 
         function deleteTask(id) {
             const mutation = `mutation { deleteTask(id: ${id}) { success } }`;
-            fetch('http://127.0.0.1:5000/graphql', {
+            fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query: mutation })
